@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مستودع الإمام الحسن (ع) | Warehouse Admin</title>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-green: #27ae60;
+            --dark-green: #1e8449;
+            --bg-light: #f4f7f6;
+            --card-white: #ffffff;
+            --text-dark: #2c3e50;
+            --text-muted: #7f8c8d;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--bg-light);
+            margin: 0; padding: 10px; color: var(--text-dark);
+        }
+
+        .container { max-width: 800px; margin: 0 auto; }
+
+        /* --- Navigation --- */
+        .tab-menu {
+            display: flex; gap: 5px; margin-bottom: 15px;
+            background: var(--card-white); padding: 5px;
+            border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            position: sticky; top: 10px; z-index: 1000;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .tab-menu::-webkit-scrollbar { display: none; }
+
+        .tab-btn {
+            flex: 1; min-width: 90px; padding: 10px 2px; border: none; border-radius: 10px;
+            background: transparent; color: var(--text-muted);
+            font-family: 'Cairo'; font-weight: 700; cursor: pointer;
+            transition: 0.3s; display: flex; flex-direction: column; 
+            align-items: center; gap: 3px; font-size: 0.65rem;
+        }
+
+        .tab-btn.active { 
+            background: var(--primary-green); color: white; 
+            box-shadow: 0 4px 8px rgba(39, 174, 96, 0.3);
+        }
+
+        /* --- Content Layout --- */
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .admin-card {
+            background: var(--card-white); padding: 15px;
+            border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 15px; border: 1px solid #eee;
+        }
+
+        h2 { font-size: 1rem; color: var(--dark-green); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }
+
+        /* --- Lists Display (Full JSON view) --- */
+        .list-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px; background: white; border-radius: 15px;
+            margin-bottom: 10px; border: 1px solid #f1f5f9;
+            transition: 0.2s;
+        }
+        .list-item:active { transform: scale(0.98); background: #f9fdfb; }
+        
+        .list-item img { width: 55px; height: 55px; object-fit: cover; border-radius: 12px; background: #f0f0f0; border: 1px solid #eee; }
+        
+        .item-info { flex: 1; }
+        .item-name { margin: 0; font-weight: 800; font-size: 0.9rem; color: var(--text-dark); }
+        .item-meta { margin: 2px 0 0; font-size: 0.7rem; color: var(--text-muted); display: flex; gap: 10px; }
+        
+        .badge { 
+            background: #e8f5e9; color: var(--dark-green); 
+            padding: 5px 12px; border-radius: 10px; 
+            font-weight: 800; font-size: 0.9rem;
+            min-width: 40px; text-align: center;
+        }
+
+        /* --- Iframe Container --- */
+        .iframe-container { width: 100%; height: 80vh; border-radius: 15px; overflow: hidden; border: 1px solid #eee; }
+        iframe { width: 100%; height: 100%; border: none; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Tab Navigation -->
+    <div class="tab-menu">
+        <button class="tab-btn active" onclick="openTab(event, 'wh-tab')">
+            <i class="fas fa-warehouse"></i><span>المستودع</span>
+        </button>
+
+        <button class="tab-btn" onclick="openTab(event, 'log-tab')">
+            <i class="fas fa-history"></i><span>السجل</span>
+        </button>
+
+        <button class="tab-btn" onclick="openTab(event, 'new-request-tab')">
+            <i class="fas fa-plus-circle"></i><span>الطلبات الجديدة</span>
+        </button>
+
+        <button class="tab-btn" onclick="openTab(event, 'request-form-tab')">
+            <i class="fas fa-cart-arrow-down"></i><span>طلب صنف</span>
+        </button>
+        
+        <button class="tab-btn" onclick="openTab(event, 'add-item-tab')">
+            <i class="fas fa-folder-plus"></i><span>تعريف صنف</span>
+        </button>
+    </div>
+
+    <!-- 1. Warehouse List (Shows all provided JSON) -->
+    <div id="wh-tab" class="tab-content active">
+        <div class="admin-card">
+            <h2><i class="fas fa-boxes-stacked"></i> حالة المخزون الحالية</h2>
+            <div id="wh-list">جاري تحميل البيانات...</div>
+        </div>
+    </div>
+
+    <!-- 2. History Log (Shows all provided JSON) -->
+    <div id="log-tab" class="tab-content">
+        <div class="admin-card">
+            <h2><i class="fas fa-list-check"></i> سجل حركات المستودع</h2>
+            <div id="log-list">جاري تحميل السجل...</div>
+        </div>
+    </div>
+
+    <!-- 3. New Request Container (Integration of request.html) -->
+    <div id="new-request-tab" class="tab-content">
+        <div class="iframe-container">
+            <iframe src="request.html"></iframe>
+        </div>
+    </div>
+
+    <!-- 4. Internal Google Forms (Request) -->
+    <div id="request-form-tab" class="tab-content">
+        <div class="admin-card">
+            <h2><i class="fas fa-paper-plane"></i> نموذج طلب صنف</h2>
+            <iframe style="width:100%; height:70vh; border:none;" src="https://docs.google.com/forms/d/e/1FAIpQLSfPHPZ2FFSjqly6fS6TRMDnBOrMP23nDTzJQoNRl9WqZbELZQ/viewform?embedded=true"></iframe>
+        </div>
+    </div>
+
+    <!-- 5. Internal Google Forms (Add Item) -->
+    <div id="add-item-tab" class="tab-content">
+        <div class="admin-card">
+            <h2><i class="fas fa-plus-circle"></i> إضافة صنف جديد لقاعدة البيانات</h2>
+            <iframe style="width:100%; height:70vh; border:none;" src="https://docs.google.com/forms/d/e/1FAIpQLSdA_Vwnl8VxE0qxuqDmAuH0N2Ly8qQ939CbS20AOn9Jbo6Zkw/viewform?embedded=true"></iframe>
+        </div>
+    </div>
+</div>
+
+<script>
+    const WAREHOUSE_API = 'https://script.google.com/macros/s/AKfycbwO5yggb7xo6jOnlWd0uf7W91IqAaYeyDZ1lGRhHyR1g0W7z8MBx-b1Ta0Ooc4xYQF5/exec';
+    const LOGS_API = 'https://script.google.com/macros/s/AKfycbz4VH5Je6wrwk7OU74KrXaVNwETFAS8r5vN4S9xemFv3TWtKAwdf6MQUWfzT-MTs5Of/exec';
+
+    async function loadData() {
+        try {
+            const [whResponse, logResponse] = await Promise.all([
+                fetch(WAREHOUSE_API).then(r => r.json()),
+                fetch(LOGS_API).then(r => r.json())
+            ]);
+            
+            renderList(whResponse, 'wh-list');
+            renderList(logResponse, 'log-list');
+        } catch (e) {
+            document.getElementById('wh-list').innerHTML = "⚠️ فشل في جلب البيانات";
+            console.error("Error loading JSON:", e);
+        }
+    }
+
+    function renderList(data, elementId) {
+        const container = document.getElementById(elementId);
+        if (!data || data.length === 0) {
+            container.innerHTML = "لا توجد بيانات حالياً.";
+            return;
+        }
+
+        container.innerHTML = data.map(item => {
+            // محاولة جلب المفاتيح المختلفة بناءً على هيكلة الـ JSON الخاص بك
+            const name = item.item || item["نام کالا"] || item.name || "صنف غير مسمى";
+            const location = item.placement || item["محل مصرف"] || item.location || "-";
+            const qty = item.quantity || item["تعداد"] || item.qty || "0";
+            const imgUrl = item.IMAGE || item["عکس"] || item.image || 'https://via.placeholder.com/60';
+
+            return `
+                <div class="list-item">
+                    <img src="${imgUrl}" onerror="this.src='https://via.placeholder.com/60'">
+                    <div class="item-info">
+                        <p class="item-name">${name}</p>
+                        <div class="item-meta">
+                            <span><i class="fas fa-map-marker-alt"></i> ${location}</span>
+                        </div>
+                    </div>
+                    <div class="badge">${qty}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function openTab(evt, tabId) {
+        const contents = document.getElementsByClassName("tab-content");
+        for (let c of contents) c.style.display = "none";
+        
+        const btns = document.getElementsByClassName("tab-btn");
+        for (let b of btns) b.classList.remove("active");
+
+        document.getElementById(tabId).style.display = "block";
+        evt.currentTarget.classList.add("active");
+
+        // إعادة تحميل البيانات عند فتح المستودع أو السجل
+        if (tabId === 'wh-tab' || tabId === 'log-tab') loadData();
+    }
+
+    // التحميل الأولي
+    window.onload = loadData;
+</script>
+</body>
+</html>
