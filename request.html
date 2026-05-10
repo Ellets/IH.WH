@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>نظام الجرد الاحترافي</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --p-green: #27ae60; --d-green: #1e8449; --bg: #f4f7f6; }
+        body { font-family: 'Cairo', sans-serif; background: var(--bg); padding: 20px; color: #2c3e50; }
+        .card { background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 20px; max-width: 1200px; margin: auto; border-top: 8px solid var(--p-green); }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+        th { background: #f8fafc; color: var(--d-green); padding: 15px; font-size: 0.9rem; border-bottom: 2px solid #edf2f7; }
+        td { padding: 15px; border-bottom: 1px solid #edf2f7; text-align: center; font-size: 1rem; }
+        
+        .item-info { text-align: right; border-right: 4px solid var(--p-green); padding-right: 15px; }
+        .name { font-weight: 900; font-size: 1.1rem; display: block; color: #1a202c; }
+        .unit-badge { font-size: 0.75rem; background: #e8f5e9; color: #2e7d32; padding: 2px 10px; border-radius: 5px; font-weight: bold; margin-top: 5px; display: inline-block; }
+        
+        .qty-val { font-family: 'monospace'; font-weight: 800; font-size: 1.3rem; display: block; }
+        .qty-u { font-size: 0.7rem; color: #718096; text-transform: uppercase; }
+        
+        .badge { padding: 8px 15px; border-radius: 12px; font-weight: 900; color: white; display: inline-block; min-width: 60px; }
+        .in { background: var(--p-green); box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3); }
+        .out { background: #e74c3c; box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3); }
+        
+        .conv-btn { background: #f39c12; color: white; border: none; padding: 5px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.75rem; margin-top: 8px; transition: 0.3s; }
+        .conv-btn:hover { background: #d35400; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2><i class="fas fa-warehouse"></i> مطابقة المخزون والوحدات</h2>
+        <button onclick="calculate()" style="background: var(--d-green); color: white; border: none; padding: 12px 30px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 1rem;">
+            <i class="fas fa-sync-alt"></i> تحديث البيانات
+        </button>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align: right;">الصنف والوحدة المسجلة</th>
+                <th>الرصيد الحالي</th>
+                <th>إجمالي السحوبات</th>
+                <th>الصافي المتوفر</th>
+            </tr>
+        </thead>
+        <tbody id="results">
+            <tr><td colspan="4">جاري فحص البيانات...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const API_WH = 'https://script.google.com/macros/s/AKfycbwO5yggb7xo6jOnlWd0uf7W91IqAaYeyDZ1lGRhHyR1g0W7z8MBx-b1Ta0Ooc4xYQF5/exec';
+    const API_LOG = 'https://script.google.com/macros/s/AKfycbz4VH5Je6wrwk7OU74KrXaVNwETFAS8r5vN4S9xemFv3TWtKAwdf6MQUWfzT-MTs5Of/exec';
+
+    let conversions = {};
+
+    // وظيفة ذكية لجلب اسم الوحدة مهما كان مسمى الحقل
+    function getUnit(obj) {
+        return obj["واحد"] || obj["واحد "] || obj["واحد\n"] || obj.unit || obj.Unit || "قطعة";
+    }
+
+    function getQty(obj) {
+        let val = obj["تعداد"] || obj["تعداد "] || obj.quantity || obj.Quantity || 0;
+        if (!val) return 0;
+        let str = val.toString();
+        const map = { '۰':0,'۱':1,'۲':2,'۳':3,'۴':4,'۵':5,'۶':6,'۷':7,'۸':8,'۹':9, '٠':0,'١':1,'٢':2,'٣':3,'٤':4,'٥':5,'٦':6,'٧':7,'٨':8,'٩':9 };
+        for(let key in map) str = str.replace(new RegExp(key, 'g'), map[key]);
+        let res = parseFloat(str.replace(/[^\d.-]/g, ''));
+        return isNaN(res) ? 0 : res;
+    }
+
+    async function calculate() {
+        const tbody = document.getElementById('results');
+        try {
+            const [wh, log] = await Promise.all([
+                fetch(API_WH).then(r => r.json()),
+                fetch(API_LOG).then(r => r.json())
+            ]);
+
+            const demandMap = {};
+            log.forEach(e => {
+                let name = (e["نام کالا"] || e.item || "").toString().trim().toLowerCase();
+                let qty = getQty(e);
+                let unit = getUnit(e).trim();
+                if (name) {
+                    if (!demandMap[name]) demandMap[name] = [];
+                    demandMap[name].push({ qty, unit });
+                }
+            });
+
+            tbody.innerHTML = wh.map(item => {
+                let name = (item["نام کالا"] || item.item || "صنف غير معروف").toString().trim();
+                let key = name.toLowerCase();
+                let whUnit = getUnit(item).trim();
+                let stock = getQty(item);
+                
+                let taken = 0;
+                let mismatchUnit = null;
+
+                if (demandMap[key]) {
+                    demandMap[key].forEach(r => {
+                        if (r.unit === whUnit) {
+                            taken += r.qty;
+                        } else {
+                            let rKey = `${r.unit}_to_${whUnit}`;
+                            if (conversions[rKey]) {
+                                taken += (r.qty * conversions[rKey]);
+                            } else {
+                                mismatchUnit = r.unit;
+                            }
+                        }
+                    });
+                }
+
+                let net = stock - taken;
+
+                return `
+                    <tr>
+                        <td class="item-info">
+                            <span class="name">${name}</span>
+                            <span class="unit-badge"><i class="fas fa-tag"></i> وحدة المخزن: ${whUnit}</span>
+                        </td>
+                        <td>
+                            <span class="qty-val">${stock}</span>
+                            <span class="qty-u">${whUnit}</span>
+                        </td>
+                        <td>
+                            <span class="qty-val" style="color: #e67e22;">${taken.toFixed(2)}</span>
+                            <span class="qty-u">${whUnit}</span>
+                            ${mismatchUnit ? `
+                                <div style="margin-top:5px;">
+                                    <span style="font-size:0.7rem; color:red; font-weight:bold;">طلب بـ: ${mismatchUnit}</span><br>
+                                    <button class="conv-btn" onclick="askConv('${mismatchUnit}', '${whUnit}')">ضبط التحويل</button>
+                                </div>
+                            ` : ''}
+                        </td>
+                        <td>
+                            <span class="badge ${net > 0 ? 'in' : 'out'}">${net.toFixed(2)}</span>
+                            <div class="qty-u" style="margin-top:5px;">${whUnit}</div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } catch (e) {
+            tbody.innerHTML = "<tr><td colspan='4'>خطأ في تحميل البيانات من السيرفر.</td></tr>";
+        }
+    }
+
+    function askConv(f, t) {
+        let r = prompt(`الطلب بـ (${f}) والمخزن بـ (${t}).\nالـ (1 ${f}) كم يساوي من الـ (${t})؟\nمثال: إذا كان الكيس فيه 10 قطع، اكتب 10`);
+        if (r && !isNaN(r)) { conversions[`${f}_to_${t}`] = parseFloat(r); calculate(); }
+    }
+
+    window.onload = calculate;
+</script>
+</body>
+</html>
