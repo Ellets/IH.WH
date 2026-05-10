@@ -55,14 +55,46 @@
             font-size: 0.9rem;
         }
 
+        /* --- Quick Actions Bar (NEW) --- */
+        .quick-actions {
+            display: flex;
+            background: white;
+            padding: 10px;
+            gap: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .btn-action {
+            flex: 1;
+            text-decoration: none;
+            text-align: center;
+            background: #fff;
+            color: var(--primary);
+            border: 1.5px solid var(--primary);
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            transition: 0.2s;
+        }
+
+        .btn-action:hover {
+            background: var(--primary);
+            color: white;
+        }
+
         /* --- Horizontal Category Bar --- */
         .filter-bar {
             display: flex;
             padding: 8px;
             gap: 8px;
             overflow-x: auto;
-            background: white;
-            border-bottom: 1px solid #ddd;
+            background: #fdfdfd;
+            border-bottom: 1px solid #eee;
             scrollbar-width: none;
         }
 
@@ -186,6 +218,16 @@
             <input type="text" id="search" placeholder="بحث سريع..." onkeyup="runFilter()">
         </div>
     </header>
+
+    <!-- روابط سريعة للإدارة والطلبات -->
+    <div class="quick-actions">
+        <a href="request.html" class="btn-action">
+            <i class="fas fa-paper-plane"></i> طلب مادة
+        </a>
+        <a href="IH.WHadmin.html" class="btn-action">
+            <i class="fas fa-user-shield"></i> لوحة الإدارة
+        </a>
+    </div>
 
     <div class="filter-bar" id="filters"></div>
 
